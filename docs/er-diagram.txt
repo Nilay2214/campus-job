@@ -1,0 +1,33 @@
+Users
+- id PK
+- email
+- password
+- role
+- enabled
+
+Students
+- id PK
+- user_id FK
+- full_name
+- phone
+- department
+- branch
+
+Recruiters
+- id PK
+- user_id FK
+- company_id FK
+
+Companies
+- id PK
+- name
+- industry
+- website
+
+Jobs
+- id PK
+- recruiter_id FK
+- company_id FK
+- title
+- description
+- eligibility

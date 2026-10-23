@@ -1,0 +1,8 @@
+target/
+bin/
+*.class
+.idea/
+.vscode/
+*.iml
+.git/
+.gitignore

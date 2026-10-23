@@ -1,0 +1,78 @@
+/* ============================================================
+   Global styles for Campus Job
+   - Tailwind utility classes are used for layout/components.
+   - This file only holds base/reset + small global helpers.
+   ============================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #020617;
+  color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Thin, dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+*::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+/* Toast overrides for dark theme */
+:root {
+  --toastify-color-light: #0f172a;
+  --toastify-color-dark: #0f172a;
+  --toastify-text-color-dark: #f8fafc;
+  --toastify-color-info: #38bdf8;
+  --toastify-color-success: #34d399;
+  --toastify-color-warning: #fbbf24;
+  --toastify-color-error: #f87171;
+}
+
+/* Utility: glassmorphism card */
+.glass {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+/* Utility: gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #818cf8, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

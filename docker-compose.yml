@@ -1,0 +1,125 @@
+version: '3.8'
+
+# ============================================================
+# Campus Job - Docker Compose
+# 
+# Services:
+#   - mysql   : MySQL 8.0 database (persistent volume)
+#   - backend : Spring Boot REST API (multi-stage build)
+#   - frontend: React app served by Nginx (proxies /api to backend)
+#
+# Usage:
+#   cp .env.example .env   # then edit .env
+#   docker compose up --build
+#
+# URLs:
+#   Frontend : http://localhost:3000
+#   Backend  : http://localhost:8080
+#   Swagger  : http://localhost:8080/swagger-ui/index.html
+#   MySQL    : localhost:3306 (from host)
+# ============================================================
+
+services:
+  # ------------------------------------------------------------
+  # MySQL Database
+  # ------------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: placement-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-placement_db}
+      MYSQL_USER: ${DB_USERNAME:-placement}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-placementpass}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - placement-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${DB_PASSWORD:-placementpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ------------------------------------------------------------
+  # Spring Boot Backend
+  # ------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: placement-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-placement_db}
+      DB_USERNAME: ${DB_USERNAME:-placement}
+      DB_PASSWORD: ${DB_PASSWORD:-placementpass}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please-use-a-long-random-secret}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+      DDL_AUTO: ${DDL_AUTO:-update}
+      SHOW_SQL: ${SHOW_SQL:-false}
+      SERVER_PORT: 8080
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-your-email@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-your-app-password}
+    ports:
+      - "8080:8080"
+    networks:
+      - placement-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  # ------------------------------------------------------------
+  # React Frontend (served by Nginx)
+  # ------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # The build-time API base URL. Pointed at the backend service name
+        # so the browser can reach it via the proxy (or directly).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    container_name: placement-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    networks:
+      - placement-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+# ------------------------------------------------------------
+# Named volumes (persistent data)
+# ------------------------------------------------------------
+volumes:
+  mysql_data:
+    name: placement-mysql-data
+
+# ------------------------------------------------------------
+# Networks (isolated internal network)
+# ------------------------------------------------------------
+networks:
+  placement-network:
+    name: placement-network
+    driver: bridge

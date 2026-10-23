@@ -25,14 +25,19 @@ import java.time.LocalDateTime;
  */
 @Component
 @Profile("dev")
-@RequiredArgsConstructor
 @Slf4j
 @Order(1)
 public class DataSeeder implements CommandLineRunner {
 
-    private final UserRepository userRepository = null;
-    private final CompanyRepository companyRepository = null;
-    private final PasswordEncoder passwordEncoder = null;
+    private final UserRepository userRepository;
+    private final CompanyRepository companyRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public DataSeeder(UserRepository userRepository, CompanyRepository companyRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     @Transactional

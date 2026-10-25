@@ -5,7 +5,7 @@ import { Mail, Lock, Eye, EyeOff, LogIn, Briefcase, ArrowRight, Phone, KeyRound,
 import { signInWithPopup } from 'firebase/auth';
 import api from '../api/api';
 import { useAuth } from '../context/AuthContext';
-import { firebaseAuth, googleProvider } from '../firebase';
+import { firebaseAuth, googleProvider, isFirebaseConfigured } from '../firebase';
 
 const LoginPage = () => {
   const [authMethod, setAuthMethod] = useState('email'); // 'email' | 'mobile'
@@ -58,8 +58,8 @@ const LoginPage = () => {
   };
 
   const handleGoogleLogin = async () => {
-    if (!import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY === 'demo-api-key') {
-      toast.error('Firebase is not configured yet. Please add your VITE_FIREBASE_API_KEY to frontend/.env');
+    if (!isFirebaseConfigured) {
+      toast.error('Google Sign-In is not configured yet. Please ensure VITE_FIREBASE_API_KEY is configured in Vercel environment variables.');
       return;
     }
     setGoogleLoading(true);

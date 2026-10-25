@@ -54,8 +54,8 @@ public class SecurityConfig {
     private ClientRegistrationRepository clientRegistrationRepository;
 
     // Comma-separated list of allowed CORS origins, configurable without a code change.
-    // Default preserves local development. Never use "*" when allowCredentials(true).
-    @Value("${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}")
+    // Default includes local development origins and the production Vercel frontend.
+    @Value("${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://campus-job-amber.vercel.app}")
     private String corsAllowedOrigins;
 
     @Bean
@@ -120,12 +120,27 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         List<String> origins = splitOrigins(corsAllowedOrigins);
+        if (origins.isEmpty()) {
+            origins = Arrays.asList(
+                    "http://localhost:3000",
+                    "http://localhost:5173",
+                    "https://campus-job-amber.vercel.app"
+            );
+        }
 
         CorsConfiguration configuration = new CorsConfiguration();
         // Never use "*" in combination with allowCredentials(true).
-        configuration.setAllowedOrigins(origins.isEmpty() ? Collections.singletonList("http://localhost:5173") : origins);
+        configuration.setAllowedOrigins(origins);
+        // Support narrowly scoped Vercel preview branch deployments (campus-job-*) and localhost ports
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:[*]",
+                "http://127.0.0.1:[*]",
+                "https://campus-job-*.vercel.app",
+                "https://campus-job-amber.vercel.app"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Collections.singletonList("*"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Link", "X-Total-Count"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

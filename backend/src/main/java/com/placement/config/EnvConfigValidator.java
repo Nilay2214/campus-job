@@ -32,9 +32,13 @@ public class EnvConfigValidator {
     public void validate() {
         List<String> missing = new ArrayList<>();
 
-        // DB_PASSWORD is mandatory (no safe default).
-        if (isBlank(property("DB_PASSWORD"))) {
-            missing.add("DB_PASSWORD");
+        // Database password is mandatory (no safe default). Accepts DB_PASSWORD or SPRING_DATASOURCE_PASSWORD.
+        String dbPassword = property("DB_PASSWORD");
+        if (isBlank(dbPassword)) {
+            dbPassword = property("SPRING_DATASOURCE_PASSWORD");
+        }
+        if (isBlank(dbPassword)) {
+            missing.add("DB_PASSWORD (or SPRING_DATASOURCE_PASSWORD)");
         }
 
         // Production profile: JWT_SECRET must be explicitly provided.

@@ -11,9 +11,9 @@ const DEFAULT_API_BASE_URL = import.meta.env.PROD
   ? 'https://campus-job-veqq.onrender.com'
   : 'http://localhost:8080';
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
-).replace(/\/+$/, '');
+const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).trim();
+// Strip trailing slashes and any inadvertent trailing /api since service endpoints already specify /api
+const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '').replace(/\/api$/, '');
 
 // ============================================================
 // CENTRALIZED AXIOS INSTANCE
@@ -52,16 +52,22 @@ const safeClearAuth = () => {
 
 // ============================================================
 // REQUEST INTERCEPTOR
-// Attach the JWT token when available
+// Attach the JWT token when available (excluding public auth endpoints)
 // ============================================================
 
 api.interceptors.request.use(
   (config) => {
-    const token = safeGetToken();
+    const isPublicAuthEndpoint = config.url && (
+      config.url.startsWith('/api/auth/') ||
+      config.url.startsWith('api/auth/')
+    );
 
-    if (token) {
-      config.headers = config.headers ?? {};
-      config.headers.Authorization = `Bearer ${token}`;
+    if (!isPublicAuthEndpoint) {
+      const token = safeGetToken();
+      if (token) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     return config;
@@ -105,7 +111,7 @@ api.interceptors.response.use(
 
     if (!error.response && error.code === 'ECONNABORTED') {
       message =
-        'The request timed out. Please try again.';
+        'The server took too long to respond. On the free Render tier, the backend may take 30-60 seconds to spin up from sleep. Please wait a moment and try again.';
     } else if (!error.response) {
       message =
         'Network Error: Unable to reach the backend. Check the backend URL, CORS configuration, and Render service status.';

@@ -103,6 +103,61 @@ class SecurityConfigTest {
         assertThat(allowCreds).isEqualTo("true");
     }
 
+    @Test
+    @DisplayName("CORS preflight should permit production Vercel frontend origin")
+    void corsPreflightShouldPermitProductionVercelOrigin() throws Exception {
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.options("/api/auth/login")
+                        .header("Origin", "https://campus-job-amber.vercel.app")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization,Content-Type")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String allowOrigin = result.getResponse().getHeader("Access-Control-Allow-Origin");
+        assertThat(allowOrigin).isEqualTo("https://campus-job-amber.vercel.app");
+
+        String allowCreds = result.getResponse().getHeader("Access-Control-Allow-Credentials");
+        assertThat(allowCreds).isEqualTo("true");
+    }
+
+    @Test
+    @DisplayName("CORS preflight should permit Vercel preview deployment origin patterns")
+    void corsPreflightShouldPermitVercelPreviewOriginPattern() throws Exception {
+        MvcResult result = mockMvc.perform(MockMvcRequestBuilders.options("/api/auth/login")
+                        .header("Origin", "https://campus-job-git-preview-nilay.vercel.app")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization,Content-Type")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String allowOrigin = result.getResponse().getHeader("Access-Control-Allow-Origin");
+        assertThat(allowOrigin).isEqualTo("https://campus-job-git-preview-nilay.vercel.app");
+    }
+
+    @Test
+    @DisplayName("CORS preflight should reject unauthorized origins")
+    void corsPreflightShouldRejectUnauthorizedOrigin() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.options("/api/auth/login")
+                        .header("Origin", "https://malicious-attacker-domain.com")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization,Content-Type")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("CORS preflight should reject other unrelated Vercel projects")
+    void corsPreflightShouldRejectUnrelatedVercelProjects() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.options("/api/auth/login")
+                        .header("Origin", "https://unrelated-other-app.vercel.app")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "Authorization,Content-Type")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
 @Test
     @DisplayName("OPTIONS /** should be permitAll (no authentication required)")
     void optionsShouldBePermitAll() throws Exception {

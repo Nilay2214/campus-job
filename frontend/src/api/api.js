@@ -1,13 +1,23 @@
+
 import axios from 'axios';
 
-// Centralized Axios instance for the whole app.
-// - Uses env var for base URL
-// - Attaches JWT automatically
-// - Normalizes error handling
+// ============================================================
+// API BASE URL
+// Production: Render backend
+// Development: Local Spring Boot backend
+// ============================================================
 
-// VITE_API_BASE_URL is set in frontend/.env (e.g. http://localhost:8080).
-// Fall back to localhost:8080 so the app still works if the env file is not present.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const DEFAULT_API_BASE_URL = import.meta.env.PROD
+  ? 'https://campus-job-veqq.onrender.com'
+  : 'http://localhost:8080';
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL
+).replace(/\/+$/, '');
+
+// ============================================================
+// CENTRALIZED AXIOS INSTANCE
+// ============================================================
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -17,6 +27,10 @@ const api = axios.create({
     Accept: 'application/json',
   },
 });
+
+// ============================================================
+// SAFE TOKEN HELPERS
+// ============================================================
 
 const safeGetToken = () => {
   try {
@@ -30,23 +44,23 @@ const safeClearAuth = () => {
   try {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-
-    // Some apps also store additional user info; remove if present.
     localStorage.removeItem('user');
   } catch {
-    // ignore
+    // Ignore localStorage errors
   }
 };
 
-// Request interceptor: attach Authorization header when token exists.
+// ============================================================
+// REQUEST INTERCEPTOR
+// Attach the JWT token when available
+// ============================================================
+
 api.interceptors.request.use(
   (config) => {
     const token = safeGetToken();
 
     if (token) {
-      // eslint-disable-next-line no-param-reassign
       config.headers = config.headers ?? {};
-      // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -55,41 +69,53 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: normalize common statuses.
+// ============================================================
+// RESPONSE INTERCEPTOR
+// Normalize errors and handle unauthorized requests
+// ============================================================
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
     const requestUrl = error?.config?.url || '';
 
+    // Handle expired or invalid JWT tokens.
+    // Let login/auth pages handle their own 401 responses.
     if (status === 401) {
-      // For general API calls, expired/invalid tokens trigger logout and redirect.
-      // For auth endpoints (/api/auth/login, etc.), let the page handle the 401 directly without reloading.
       if (!requestUrl.includes('/api/auth/')) {
         safeClearAuth();
+
         try {
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('auth:unauthorized'));
           }
         } catch {
-          // ignore redirect issues
+          // Ignore browser event errors
         }
       }
-    } else if (status === 403) {
-      // 403 forbidden should not clear auth; message is surfaced below.
     }
 
-    const message =
+    // Use a useful message when the server is unreachable.
+    let message =
       error?.response?.data?.error ||
       error?.response?.data?.message ||
       error?.message ||
       'Request failed';
 
-    // Convert to standardized error object so UI code can handle consistently.
+    if (!error.response && error.code === 'ECONNABORTED') {
+      message =
+        'The request timed out. Please try again.';
+    } else if (!error.response) {
+      message =
+        'Network Error: Unable to reach the backend. Check the backend URL, CORS configuration, and Render service status.';
+    }
+
     const normalizedError = {
       success: false,
       message,
-      status: status ?? 500,
+      status: status ?? 0,
+      code: error?.code,
       details: error?.response?.data ?? undefined,
       response: error?.response,
     };
@@ -99,4 +125,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-

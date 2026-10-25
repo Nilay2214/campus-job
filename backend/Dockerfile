@@ -1,39 +1,47 @@
+
 # ============================================================
-# STAGE 1: Build the Spring Boot application with Maven
+# STAGE 1: Build Spring Boot application using Maven
 # ============================================================
 FROM maven:3.9.6-eclipse-temurin-17 AS build
+
 WORKDIR /app
 
-# Copy pom.xml first to leverage Docker layer caching
+# Copy Maven configuration first for dependency caching
 COPY pom.xml .
-# Download dependencies (cached unless pom.xml changes)
+
+# Download project dependencies
 RUN mvn dependency:go-offline -B
 
-# Copy source code and build the jar (skip tests for a faster image build)
+# Copy Java source code
 COPY src ./src
+
+# Build the executable Spring Boot JAR
 RUN mvn clean package -DskipTests -B
 
+
 # ============================================================
-# STAGE 2: Runtime image (slim JRE)
+# STAGE 2: Production runtime image
 # ============================================================
 FROM eclipse-temurin:17-jre-alpine
+
 WORKDIR /app
 
-# Create a non-root user to run the application (security best practice)
-RUN addgroup -S spring && adduser -S spring -G spring
+# Create a non-root user for security
+RUN addgroup -S spring \
+    && adduser -S spring -G spring
 
-# Copy the built jar from the build stage
-COPY --from=build /app/target/*.jar app.jar
+# Copy the executable JAR from the build stage
+COPY --from=build /app/target/placement-management-1.0.0.jar app.jar
 
-# Switch to the non-root user
+# Run the application as a non-root user
 USER spring:spring
 
-# Expose the application port
-EXPOSE 8080
+# Default Render web service port
+EXPOSE 10000
 
-# Health check (uses the sample health endpoint; requires spring-boot-starter-actuator)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+# Health check using Spring Boot Actuator
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD-SHELL wget -qO- "http://127.0.0.1:${PORT:-10000}/actuator/health" >/dev/null || exit 1
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Start Spring Boot on Render's assigned port
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-10000} -Dserver.address=0.0.0.0 -jar app.jar"]
